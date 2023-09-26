@@ -1,4 +1,4 @@
-import {Button, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import React, {useState} from 'react';
 import {useNavigation} from '@react-navigation/native';
 import AppHeader from '../components/AppHeader';
@@ -6,28 +6,92 @@ import TextField from '../components/TextField';
 import Fontisto from 'react-native-vector-icons/Fontisto';
 import Feather from 'react-native-vector-icons/Feather';
 import LockEye from '../assests/commonImage/LockEye.png';
-import CustomCheckbox, {CustomCheckBox} from '../components/CustomCheckbox';
+import {CustomCheckBox} from '../components/CustomCheckbox';
 import CustomButton from '../components/CustomButton';
 import FooterImage from '../components/FooterImage';
+import {useAppDispatch, useAppSelector} from '../redux/reduxHooks/hooks';
+import {
+  removeLocalStoarage,
+  setLocalStorage,
+} from '../api/asyncStorage/storage';
+import {login} from '../redux/slice/authSlice/authAction';
+import {handleUserLoginChangeData} from '../redux/slice/authSlice/authSlice';
 
 export default function Login() {
-  const [userLoginData, setUserLoginData] = useState({
-    email: '',
-    password: '',
-  });
+  const navigation = useNavigation<any>();
+
+  const dispatch = useAppDispatch();
+
   const [activeIcone, setActiveIcone] = useState<string>('eye-with-line');
   const [checkBoxValue, setcheckBoxValue] = useState<boolean>(true);
+  const {userLoginData, loading} = useAppSelector(state => state.authSlice);
+  // const [userLoginData, setUserLoginData] = useState({
+  //   email: '',
+  //   password: '',
+  // });
+  const [msg, setMsg] = useState<any>('');
+
+  // const handleChangeData = (value: string, key: string) => {
+  //   setUserLoginData(prevData => ({
+  //     ...prevData,
+  //     [key]: value,
+  //   }));
+  // };
 
   const handleChangeData = (value: string, key: string) => {
-    setUserLoginData(prevData => ({
-      ...prevData,
-      [key]: value,
-    }));
+    dispatch(handleUserLoginChangeData({value, key}));
+  };
+
+  const validateLength = (text: string) => {
+    console.log(text);
+    return text?.length;
+  };
+
+  const validateEmail = (data: string) => {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return emailRegex?.test(data);
+  };
+
+  const validatePassword = (data: string) => {
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    return passwordRegex?.test(data);
   };
 
   const handleLogin = () => {
-    console.log(userLoginData, 'Login data');
+    setMsg('');
+    console.log(userLoginData);
+    if (!validateLength(userLoginData.email)) {
+      setMsg('Email is required');
+    } else if (!validateEmail(userLoginData.email)) {
+      setMsg('Email is invalid');
+    } else if (!validateLength(userLoginData.password)) {
+      setMsg('Password is required');
+    } else if (!validatePassword(userLoginData.password)) {
+      setMsg('Password is invalid');
+    } else {
+      if (checkBoxValue) {
+        setLocalStorage('loginData', userLoginData);
+      } else {
+        removeLocalStoarage('loginData');
+      }
+
+      //Dispatch the login action
+      dispatch(login(userLoginData))
+        .then((response: any) => {
+          if (response.payload?.code === 200) {
+            console.log('Api call successfull');
+          } else {
+            console.log(response);
+          }
+        })
+        .catch(error => {
+          setMsg(error?.payload?.message);
+        });
+    }
   };
+
+  console.log(msg);
 
   return (
     <>
